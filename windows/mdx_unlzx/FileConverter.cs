@@ -34,7 +34,7 @@ public static class FileConverter
         }
     }
 
-    private static byte[] DecodeBytes(byte[] source, string extension)
+    public static byte[] DecodeBytes(byte[] source, string extension)
     {
         if (extension.Equals(".mdx", StringComparison.OrdinalIgnoreCase))
         {

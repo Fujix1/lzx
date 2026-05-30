@@ -7,6 +7,7 @@ public sealed class MainForm : Form
     private const string InitialStatus = "mdx, pdx ファイルやフォルダをドロップしてください";
 
     private readonly ListView fileList = new();
+    private readonly Button clearButton = new();
     private readonly Button decodeButton = new();
     private readonly StatusStrip statusStrip = new();
     private readonly ToolStripStatusLabel statusLabel = new();
@@ -35,11 +36,19 @@ public sealed class MainForm : Form
         fileList.HideSelection = false;
         fileList.AllowDrop = true;
         fileList.ShowItemToolTips = true;
-        fileList.Columns.Add("ファイル名", 300);
-        fileList.Columns.Add("タグ", 430);
+        fileList.Columns.Add("ファイル名", 280);
+        fileList.Columns.Add("圧縮サイズ", 110, HorizontalAlignment.Right);
+        fileList.Columns.Add("解凍サイズ", 110, HorizontalAlignment.Right);
+        fileList.Columns.Add("タグ", 330);
         fileList.Columns.Add("LZX圧縮", 90, HorizontalAlignment.Center);
         fileList.DragEnter += OnDragEnter;
         fileList.DragDrop += OnDragDrop;
+
+        clearButton.Text = "クリア";
+        clearButton.Dock = DockStyle.Left;
+        clearButton.Width = 120;
+        clearButton.Enabled = false;
+        clearButton.Click += OnClearClick;
 
         decodeButton.Text = "解凍";
         decodeButton.Dock = DockStyle.Right;
@@ -53,6 +62,7 @@ public sealed class MainForm : Form
             Height = 52,
             Padding = new Padding(8)
         };
+        buttonPanel.Controls.Add(clearButton);
         buttonPanel.Controls.Add(decodeButton);
 
         statusLabel.Text = InitialStatus;
@@ -109,7 +119,7 @@ public sealed class MainForm : Form
             added++;
         }
 
-        decodeButton.Enabled = files.Values.Any(file => file.IsLzxCompressed && file.ErrorMessage is null);
+        UpdateButtonState();
         SetStatus(added == 0
             ? "追加できる mdx, pdx ファイルはありませんでした"
             : $"{added} 件のファイルを追加しました");
@@ -148,6 +158,8 @@ public sealed class MainForm : Form
     private static ListViewItem CreateItem(DroppedFile info)
     {
         var item = new ListViewItem(Path.GetFileName(info.Path));
+        item.SubItems.Add(FormatSize(info.CompressedSize));
+        item.SubItems.Add(info.DecodedSize is null ? "" : FormatSize(info.DecodedSize.Value));
         item.SubItems.Add(info.Tag);
         item.SubItems.Add(info.IsLzxCompressed ? "✔" : "");
         item.Tag = info.Path;
@@ -159,6 +171,14 @@ public sealed class MainForm : Form
         }
 
         return item;
+    }
+
+    private void OnClearClick(object? sender, EventArgs e)
+    {
+        files.Clear();
+        fileList.Items.Clear();
+        UpdateButtonState();
+        SetStatus(InitialStatus);
     }
 
     private void OnDecodeClick(object? sender, EventArgs e)
@@ -193,7 +213,7 @@ public sealed class MainForm : Form
             }
         }
 
-        decodeButton.Enabled = files.Values.Any(file => file.IsLzxCompressed && file.ErrorMessage is null);
+        UpdateButtonState();
         SetStatus($"解凍完了: 成功 {succeeded} 件 / 失敗 {failed} 件");
     }
 
@@ -214,7 +234,7 @@ public sealed class MainForm : Form
                 continue;
             }
 
-            item.SubItems[2].Text = "";
+            item.SubItems[4].Text = "";
             item.ForeColor = SystemColors.WindowText;
             item.ToolTipText = "";
             break;
@@ -246,5 +266,16 @@ public sealed class MainForm : Form
         statusLabel.Text = message;
         statusStrip.Refresh();
         Debug.WriteLine(message);
+    }
+
+    private void UpdateButtonState()
+    {
+        clearButton.Enabled = files.Count > 0;
+        decodeButton.Enabled = files.Values.Any(file => file.IsLzxCompressed && file.ErrorMessage is null);
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        return bytes.ToString("N0") + " B";
     }
 }
