@@ -40,8 +40,7 @@ public sealed class MainForm : Form
         fileList.Columns.Add("ファイル名", 280);
         fileList.Columns.Add("圧縮サイズ", 110, HorizontalAlignment.Right);
         fileList.Columns.Add("解凍サイズ", 110, HorizontalAlignment.Right);
-        fileList.Columns.Add("タグ", 330);
-        fileList.Columns.Add("LZX圧縮", 90, HorizontalAlignment.Center);
+        fileList.Columns.Add("タグ", 550);
         fileList.DragEnter += OnDragEnter;
         fileList.DragDrop += OnDragDrop;
 
@@ -106,8 +105,8 @@ public sealed class MainForm : Form
         SetStatus("ドロップされたファイルを収集中...");
 
         var candidates = await Task.Run(() => ExpandDroppedPaths(paths).ToList());
-        var added = 0;
         var analyzed = 0;
+        var compressedCount = 0;
         var pendingItems = new List<ListViewItem>();
 
         fileList.BeginUpdate();
@@ -120,7 +119,10 @@ public sealed class MainForm : Form
                     continue;
                 }
 
-                SetStatus($"解析済み数: {analyzed}\n解析中: {path}");
+                if (analyzed % 10 == 0)
+                {
+                    SetStatus($"解析済み数: {analyzed}\n解析中: {path}");
+                }
 
                 DroppedFile info;
                 try
@@ -132,12 +134,18 @@ public sealed class MainForm : Form
                     info = DroppedFile.FromError(path, ex.Message);
                 }
 
-                files[path] = info;
-                pendingItems.Add(CreateItem(info));
-                added++;
                 analyzed++;
 
-                if (analyzed % 25 == 0)
+                if (!info.IsLzxCompressed)
+                {
+                    continue;
+                }
+
+                files[path] = info;
+                pendingItems.Add(CreateItem(info));
+                compressedCount++;
+
+                if (analyzed % 10 == 0)
                 {
                     await Task.Yield();
                 }
@@ -153,9 +161,9 @@ public sealed class MainForm : Form
 
             isAnalyzing = false;
             UpdateButtonState();
-            SetStatus(added == 0
-                ? "追加できる mdx, pdx ファイルはありませんでした"
-                : $"{added} 件のファイルを追加しました");
+            SetStatus(compressedCount == 0
+                ? "LZX圧縮されているファイルはありませんでした"
+                : $"{candidates.Count}件中、{compressedCount}ファイルがLZX圧縮されていました");
         }
     }
 
@@ -195,7 +203,6 @@ public sealed class MainForm : Form
         item.SubItems.Add(FormatSize(info.CompressedSize));
         item.SubItems.Add(info.DecodedSize is null ? "" : FormatSize(info.DecodedSize.Value));
         item.SubItems.Add(info.Tag);
-        item.SubItems.Add(info.IsLzxCompressed ? "✔" : "");
         item.Tag = info.Path;
 
         if (info.ErrorMessage is not null)
@@ -268,7 +275,6 @@ public sealed class MainForm : Form
                 continue;
             }
 
-            item.SubItems[4].Text = "";
             item.ForeColor = SystemColors.WindowText;
             item.ToolTipText = "";
             break;
