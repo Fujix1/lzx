@@ -12,6 +12,7 @@ public sealed class MainForm : Form
     private readonly StatusStrip statusStrip = new();
     private readonly ToolStripStatusLabel statusLabel = new();
     private readonly Dictionary<string, DroppedFile> files = new(StringComparer.OrdinalIgnoreCase);
+    private bool isAnalyzing;
 
     public MainForm()
     {
@@ -82,47 +83,72 @@ public sealed class MainForm : Form
             : DragDropEffects.None;
     }
 
-    private void OnDragDrop(object? sender, DragEventArgs e)
+    private async void OnDragDrop(object? sender, DragEventArgs e)
     {
         if (e.Data?.GetData(DataFormats.FileDrop) is not string[] droppedPaths)
         {
             return;
         }
 
-        AddPaths(droppedPaths);
+        await AddPathsAsync(droppedPaths);
     }
 
-    private void AddPaths(IEnumerable<string> paths)
+    private async Task AddPathsAsync(IEnumerable<string> paths)
     {
-        var candidates = ExpandDroppedPaths(paths).ToList();
-        var added = 0;
-
-        foreach (var path in candidates)
+        if (isAnalyzing)
         {
-            if (files.ContainsKey(path))
-            {
-                continue;
-            }
-
-            DroppedFile info;
-            try
-            {
-                info = DroppedFile.Read(path);
-            }
-            catch (Exception ex)
-            {
-                info = DroppedFile.FromError(path, ex.Message);
-            }
-
-            files[path] = info;
-            fileList.Items.Add(CreateItem(info));
-            added++;
+            SetStatus("解析中です。完了してから追加してください");
+            return;
         }
 
+        isAnalyzing = true;
         UpdateButtonState();
-        SetStatus(added == 0
-            ? "追加できる mdx, pdx ファイルはありませんでした"
-            : $"{added} 件のファイルを追加しました");
+        SetStatus("ドロップされたファイルを収集中...");
+
+        var candidates = await Task.Run(() => ExpandDroppedPaths(paths).ToList());
+        var added = 0;
+        var analyzed = 0;
+
+        try
+        {
+            foreach (var path in candidates)
+            {
+                if (files.ContainsKey(path))
+                {
+                    continue;
+                }
+
+                SetStatus($"解析済み数: {analyzed}\n解析中: {path}");
+
+                DroppedFile info;
+                try
+                {
+                    info = await Task.Run(() => DroppedFile.Read(path));
+                }
+                catch (Exception ex)
+                {
+                    info = DroppedFile.FromError(path, ex.Message);
+                }
+
+                files[path] = info;
+                fileList.Items.Add(CreateItem(info));
+                added++;
+                analyzed++;
+
+                if (analyzed % 25 == 0)
+                {
+                    await Task.Yield();
+                }
+            }
+        }
+        finally
+        {
+            isAnalyzing = false;
+            UpdateButtonState();
+            SetStatus(added == 0
+                ? "追加できる mdx, pdx ファイルはありませんでした"
+                : $"{added} 件のファイルを追加しました");
+        }
     }
 
     private static IEnumerable<string> ExpandDroppedPaths(IEnumerable<string> paths)
@@ -270,8 +296,8 @@ public sealed class MainForm : Form
 
     private void UpdateButtonState()
     {
-        clearButton.Enabled = files.Count > 0;
-        decodeButton.Enabled = files.Values.Any(file => file.IsLzxCompressed && file.ErrorMessage is null);
+        clearButton.Enabled = !isAnalyzing && files.Count > 0;
+        decodeButton.Enabled = !isAnalyzing && files.Values.Any(file => file.IsLzxCompressed && file.ErrorMessage is null);
     }
 
     private static string FormatSize(long bytes)
