@@ -108,7 +108,9 @@ public sealed class MainForm : Form
         var candidates = await Task.Run(() => ExpandDroppedPaths(paths).ToList());
         var added = 0;
         var analyzed = 0;
+        var pendingItems = new List<ListViewItem>();
 
+        fileList.BeginUpdate();
         try
         {
             foreach (var path in candidates)
@@ -131,7 +133,7 @@ public sealed class MainForm : Form
                 }
 
                 files[path] = info;
-                fileList.Items.Add(CreateItem(info));
+                pendingItems.Add(CreateItem(info));
                 added++;
                 analyzed++;
 
@@ -143,6 +145,12 @@ public sealed class MainForm : Form
         }
         finally
         {
+            if (pendingItems.Count > 0)
+            {
+                fileList.Items.AddRange(pendingItems.ToArray());
+            }
+            fileList.EndUpdate();
+
             isAnalyzing = false;
             UpdateButtonState();
             SetStatus(added == 0
