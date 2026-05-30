@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>X68000 MDX/PDX LZX 解凍するマン</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <h1>X68000 MDX/PDX LZX 解凍するマン</h1>
+        <p>LZX 圧縮された MDX/PDX ファイルを解凍します。</p>
+      </div>
+      <a class="license-link" href="LICENSE" target="_blank">License</a>
+    </header>
+
+    <section class="tool" aria-labelledby="converter-title">
+      <div class="drop-zone" id="drop-zone">
+        <div>
+          <h2 id="converter-title">MDX / PDX ファイルをドラッグしてください。</h2>
+          <p id="selected-file">ファイルが選択されていません</p>
+        </div>
+        <label class="file-button">
+          <input id="file-input" type="file" accept=".mdx,.MDX,.pdx,.PDX">
+          開く...
+        </label>
+      </div>
+
+
+      <pre id="status" class="status" aria-live="polite">ファイルはローカル処理されるため、外部にアップロードはされません。</pre>
+
+      <div class="actions" style="display: flex;flex-direction: row;justify-content: flex-end;">
+        <a id="download-link" class="download disabled" download>ダウンロード</a>
+      </div>
+    </section>
+
+    <section class="notes" aria-label="Project notes">
+      <p>
+        MDX conversion preserves the clear title and PDX-name header, then
+        replaces the compressed body with decoded MDX data. PDX conversion is
+        currently a whole-file LZX042 attempt until more compressed PDX samples
+        are verified.
+      </p>
+      <p>
+        デコーダ処理: Mamiya's GPL <code>lzx042.nas</code> from the KUMAamp project, as mirrored at
+        <a href="https://github.com/FIX94/in_mdx/tree/master/LZX042" target="_blank"
+          rel="noopener noreferrer">FIX94/in_mdx</a>.
+      </p>
+    </section>
+  </main>
+
+  <script src="src/lzx042.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
