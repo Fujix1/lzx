@@ -18,7 +18,7 @@ public sealed class MainForm : Form
     {
         Text = "UnLZX for MDX / PDX";
         MinimumSize = new Size(760, 420);
-        Size = new Size(1120, 560);
+        Size = new Size(1270, 560);
         StartPosition = FormStartPosition.WindowsDefaultLocation;
         AllowDrop = true;
 
