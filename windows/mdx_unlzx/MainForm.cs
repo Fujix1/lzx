@@ -41,6 +41,7 @@ public sealed class MainForm : Form
         fileList.Columns.Add("圧縮サイズ", 110, HorizontalAlignment.Right);
         fileList.Columns.Add("解凍サイズ", 110, HorizontalAlignment.Right);
         fileList.Columns.Add("タグ", 550);
+        fileList.Columns.Add("ステータス", 90, HorizontalAlignment.Center);
         fileList.DragEnter += OnDragEnter;
         fileList.DragDrop += OnDragDrop;
 
@@ -199,10 +200,14 @@ public sealed class MainForm : Form
 
     private static ListViewItem CreateItem(DroppedFile info)
     {
-        var item = new ListViewItem(Path.GetFileName(info.Path));
+        var displayName = info.ErrorMessage is null
+            ? Path.GetFileName(info.Path)
+            : "⛔ " + Path.GetFileName(info.Path);
+        var item = new ListViewItem(displayName);
         item.SubItems.Add(FormatSize(info.CompressedSize));
         item.SubItems.Add(info.DecodedSize is null ? "" : FormatSize(info.DecodedSize.Value));
         item.SubItems.Add(info.Tag);
+        item.SubItems.Add(info.ErrorMessage is null ? "" : "ファイルエラー");
         item.Tag = info.Path;
 
         if (info.ErrorMessage is not null)
@@ -276,6 +281,8 @@ public sealed class MainForm : Form
             }
 
             item.ForeColor = SystemColors.WindowText;
+            item.Text = Path.GetFileName(path);
+            item.SubItems[4].Text = "";
             item.ToolTipText = "";
             break;
         }
@@ -296,6 +303,8 @@ public sealed class MainForm : Form
             }
 
             item.ForeColor = Color.Firebrick;
+            item.Text = "⛔ " + Path.GetFileName(path);
+            item.SubItems[4].Text = "ファイルエラー";
             item.ToolTipText = message;
             break;
         }
